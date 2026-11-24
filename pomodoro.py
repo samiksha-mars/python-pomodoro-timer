@@ -60,3 +60,34 @@ def run(schedule, sleep=time.sleep, write=sys.stdout.write):
         if phase.name == WORK:
             completed += 1
     return completed
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Run a Pomodoro timer in the terminal.")
+    parser.add_argument("-w", "--work", type=float, default=25, help="work minutes (default 25)")
+    parser.add_argument("-s", "--short-break", type=float, default=5, help="short break minutes (default 5)")
+    parser.add_argument("-l", "--long-break", type=float, default=15, help="long break minutes (default 15)")
+    parser.add_argument("-n", "--sessions", type=int, default=4, help="number of work sessions (default 4)")
+    parser.add_argument("--long-every", type=int, default=4,
+                        help="take a long break after this many sessions (default 4)")
+    args = parser.parse_args(argv)
+
+    try:
+        schedule = build_schedule(args.sessions, args.work, args.short_break,
+                                  args.long_break, args.long_every)
+    except ValueError as e:
+        parser.error(str(e))
+
+    total = sum(phase.seconds for phase in schedule)
+    print(f"Pomodoro: {args.sessions} session(s), total time {format_time(total)}. Ctrl+C to stop.\n")
+    try:
+        completed = run(schedule)
+    except KeyboardInterrupt:
+        print("\n\nStopped early.")
+        return 130
+    print(f"\nAll done! You completed {completed} work session(s).")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
