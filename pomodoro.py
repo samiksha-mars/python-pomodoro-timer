@@ -47,8 +47,19 @@ def countdown(phase, label, sleep=time.sleep, write=sys.stdout.write):
     write(f"\r{label}  {format_time(0)} done!\a\n")
 
 
+class Stopped(Exception):
+    """Raised by run() when the timer is interrupted with Ctrl+C."""
+
+    def __init__(self, completed):
+        super().__init__(completed)
+        self.completed = completed
+
+
 def run(schedule, sleep=time.sleep, write=sys.stdout.write):
-    """Run every phase in order; return the number of completed work sessions."""
+    """Run every phase in order; return the number of completed work sessions.
+
+    On Ctrl+C, raise Stopped carrying the number of sessions completed so far.
+    """
     total_work = sum(1 for phase in schedule if phase.name == WORK)
     completed = 0
     for phase in schedule:
@@ -56,7 +67,10 @@ def run(schedule, sleep=time.sleep, write=sys.stdout.write):
             label = f"[{completed + 1}/{total_work}] {WORK}"
         else:
             label = f"      {phase.name}"
-        countdown(phase, label, sleep, write)
+        try:
+            countdown(phase, label, sleep, write)
+        except KeyboardInterrupt:
+            raise Stopped(completed) from None
         if phase.name == WORK:
             completed += 1
     return completed
@@ -82,8 +96,8 @@ def main(argv=None):
     print(f"Pomodoro: {args.sessions} session(s), total time {format_time(total)}. Ctrl+C to stop.\n")
     try:
         completed = run(schedule)
-    except KeyboardInterrupt:
-        print("\n\nStopped early.")
+    except Stopped as stopped:
+        print(f"\n\nStopped early. You completed {stopped.completed} work session(s).")
         return 130
     print(f"\nAll done! You completed {completed} work session(s).")
     return 0

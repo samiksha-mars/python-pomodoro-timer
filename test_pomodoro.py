@@ -1,6 +1,7 @@
 import unittest
 
-from pomodoro import LONG_BREAK, SHORT_BREAK, WORK, Phase, build_schedule, countdown, format_time, run
+from pomodoro import (LONG_BREAK, SHORT_BREAK, WORK, Phase, Stopped, build_schedule, countdown,
+                      format_time, run)
 
 
 class ScheduleTest(unittest.TestCase):
@@ -47,6 +48,19 @@ class CountdownTest(unittest.TestCase):
         completed = run(schedule, sleep=sleeps.append, write=lambda s: None)
         self.assertEqual(completed, 3)
         self.assertEqual(len(sleeps), 5)  # 3 work + 2 breaks, one second each
+
+    def test_interrupt_reports_completed_sessions(self):
+        calls = []
+
+        def sleep(seconds):
+            calls.append(seconds)
+            if len(calls) == 4:  # during the second work session
+                raise KeyboardInterrupt
+
+        schedule = build_schedule(sessions=3, work=2 / 60, short_break=1 / 60)
+        with self.assertRaises(Stopped) as ctx:
+            run(schedule, sleep=sleep, write=lambda s: None)
+        self.assertEqual(ctx.exception.completed, 1)
 
 
 if __name__ == "__main__":
